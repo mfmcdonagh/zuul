@@ -328,11 +328,11 @@ class GithubConnection(BaseConnection):
 
     def setCommitStatus(self, owner, project, sha, state,
                         url='', description='', context=''):
-        log.debug('Setting commit status: %s', state)
+        self.log.debug('Setting commit status: %s', state)
         repository = self.github.repository(owner, project)
-        log.debug('Calling create_status: sha: %s, state: %s, url: %s,'
-                  ' description: %s, context: %s', sha, state, url,
-                                                   description, context)
+        self.log.debug('Calling create_status: sha: %s, state: %s, url: %s,'
+                       ' description: %s, context: %s', sha, state, url,
+                                                        description, context)
         repository.create_status(sha, state, url, description, context)
         log_rate_limit(self.log, self.github)
 
