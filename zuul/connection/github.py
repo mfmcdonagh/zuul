@@ -336,7 +336,7 @@ class GithubConnection(BaseConnection):
         repository = self.github.repository(owner, project)
         self.log.debug('Calling create_status: sha: %s, state: %s, url: %s,'
                        ' description: %s, context: %s', sha, state, url,
-                                                        description, context)
+                       description, context)
         repository.create_status(sha, state, url, description, context)
         log_rate_limit(self.log, self.github)
 
