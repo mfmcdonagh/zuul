@@ -60,6 +60,7 @@ class GithubSource(BaseSource):
             change.patchset = event.patch_number
             change.files = self.getPullFiles(project, change.number)
             change.title = event.title
+            change.status = event.statuses
             change.source_event = event
         else:
             change = Ref(project)
