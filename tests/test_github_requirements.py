@@ -31,21 +31,12 @@ class TestGithubRequirements(ZuulTestCase):
 
     def test_pipeline_require_status(self):
         "Test pipeline requirement: status"
-        return self._test_require_status('org/project1',
-                                         'project1-pipeline')
-
-#    def test_trigger_require_status(self):
-#        "Test trigger requirement: status"
-#        return self._test_require_status('org/project2',
-#                                         'project2-trigger')
-
-    def _test_require_status(self, project, job):
         self.config.set('zuul', 'layout_config',
                         'tests/fixtures/layout-github-requirement-status.yaml')
         self.sched.reconfigure(self.config)
         self.registerJobs()
 
-        A = self.fake_github.openFakePullRequest(project, 'master', 'A')
+        A = self.fake_github.openFakePullRequest('org/project1', 'master', 'A')
         # A comment event that we will keep submitting to trigger
         comment = A.getCommentAddedEvent('test me')
         self.fake_github.emitEvent(comment)
@@ -64,6 +55,33 @@ class TestGithubRequirements(ZuulTestCase):
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
-        self.assertEqual(self.history[0].name, job)
+        self.assertEqual(self.history[0].name, 'project1-pipeline')
 
-# TODO: Implement reject on status
+    def test_trigger_require_status(self):
+        "Test trigger requirement: status"
+        self.config.set('zuul', 'layout_config',
+                        'tests/fixtures/layout-github-requirement-status.yaml')
+        self.sched.reconfigure(self.config)
+        self.registerJobs()
+
+        A = self.fake_github.openFakePullRequest('org/project2', 'master', 'A')
+
+        # An error status should not cause it to be enqueued
+        A.setStatus(A.head_sha, 'error', 'null', 'null', 'check')
+        self.fake_github.emitEvent(A.getCommitStatusEvent('error'))
+        self.waitUntilSettled()
+        self.assertEqual(len(self.history), 0)
+
+        # An success status from unknown user should not cause it to be
+        # enqueued
+        A.setStatus(A.head_sha, 'error', 'null', 'null', 'check', user='foo')
+        self.fake_github.emitEvent(A.getCommitStatusEvent('error'))
+        self.waitUntilSettled()
+        self.assertEqual(len(self.history), 0)
+
+        # A success status goes in
+        A.setStatus(A.head_sha, 'success', 'null', 'null', 'check')
+        self.fake_github.emitEvent(A.getCommitStatusEvent('success'))
+        self.waitUntilSettled()
+        self.assertEqual(len(self.history), 1)
+        self.assertEqual(self.history[0].name, 'project2-trigger')
