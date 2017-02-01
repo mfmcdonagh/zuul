@@ -474,7 +474,7 @@ class GithubConnection(BaseConnection):
         commit = repository.commit(sha)
         # make a list out of the statuses so that we complete our
         # API transaction
-        statuses = [status for status in commit.statuses()]
+        statuses = [status.as_dict() for status in commit.statuses()]
 
         log_rate_limit(self.log, self.github)
         return statuses
