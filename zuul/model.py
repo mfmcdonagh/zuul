@@ -1139,11 +1139,13 @@ class GithubTriggerEvent(TriggerEvent):
 
 
 class BaseFilter(object):
-    def __init__(self, required_approvals=[], reject_approvals=[]):
+    def __init__(self, required_approvals=[], reject_approvals=[],
+                 statuses=[]):
         self._required_approvals = copy.deepcopy(required_approvals)
         self.required_approvals = self._tidy_approvals(required_approvals)
         self._reject_approvals = copy.deepcopy(reject_approvals)
         self.reject_approvals = self._tidy_approvals(reject_approvals)
+        self.statuses = statuses
 
     def _tidy_approvals(self, approvals):
         for a in approvals:
@@ -1228,15 +1230,33 @@ class BaseFilter(object):
         # queue
         return True
 
+    def matchesStatuses(self, change):
+        if self.statuses:
+            # handle a change where status is list of statuses rather
+            # than a single string
+            if not isinstance(change.status, list):
+                if change.status not in self.statuses:
+                    return False
+            else:
+                # this is likely from github, where the head of the
+                # pr can have multiple statues on it.
+                # If the change statuses and the filter statuses are
+                # a null intersection, there are no matches and we return
+                # false.
+                if set(change.status).isdisjoint(set(self.statuses)):
+                    return False
+        return True
+
 
 class EventFilter(BaseFilter):
     def __init__(self, trigger, types=[], branches=[], refs=[],
                  event_approvals={}, comments=[], emails=[], usernames=[],
                  timespecs=[], required_approvals=[], reject_approvals=[],
-                 pipelines=[], labels=[], states=[], ignore_deletes=True):
+                 pipelines=[], labels=[], states=[], statuses=[],
+                 ignore_deletes=True):
         super(EventFilter, self).__init__(
             required_approvals=required_approvals,
-            reject_approvals=reject_approvals)
+            reject_approvals=reject_approvals, statuses=statuses)
         self.trigger = trigger
         self._types = types
         self._branches = branches
@@ -1292,6 +1312,8 @@ class EventFilter(BaseFilter):
             ret += ' labels: %s' % ', '.join(self.labels)
         if self.states:
             ret += ' states: %s' % ', '.join(self.states)
+        if self.statuses:
+            ret += ' statuses: %s' % ', '.join(self.statuses)
         ret += '>'
 
         return ret
@@ -1396,6 +1418,9 @@ class EventFilter(BaseFilter):
         if self.states and event.state not in self.states:
             return False
 
+        if not self.matchesStatuses(change):
+            return False
+
         return True
 
 
@@ -1405,10 +1430,10 @@ class ChangeishFilter(BaseFilter):
                  reject_approvals=[]):
         super(ChangeishFilter, self).__init__(
             required_approvals=required_approvals,
-            reject_approvals=reject_approvals)
+            reject_approvals=reject_approvals,
+            statuses=statuses)
         self.open = open
         self.current_patchset = current_patchset
-        self.statuses = statuses
 
     def __repr__(self):
         ret = '<ChangeishFilter'
@@ -1438,20 +1463,8 @@ class ChangeishFilter(BaseFilter):
             if self.current_patchset != change.is_current_patchset:
                 return False
 
-        if self.statuses:
-            # handle a change where status is list of statuses rather
-            # than a single string
-            if not isinstance(change.status, list):
-                if change.status not in self.statuses:
-                    return False
-            else:
-                # this is likely from github, where the head of the
-                # pr can have multiple statues on it.
-                # If the change statuses and the filter statuses are
-                # a null intersection, there are no matches and we return
-                # false.
-                if set(change.status).isdisjoint(set(self.statuses)):
-                    return False
+        if not self.matchesStatuses(change):
+            return False
 
         # required approvals are ANDed (reject approvals are ORed)
         if not self.matchesApprovals(change):
