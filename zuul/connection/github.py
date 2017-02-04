@@ -474,6 +474,8 @@ class GithubConnection(BaseConnection):
             raise Exception('Multiple pulls found with head sha %s' % sha)
 
         log_rate_limit(self.log, self.github)
+        if len(pulls) == 0:
+            return None
         return pulls.pop()
 
     def getPullFileNames(self, owner, project, number):
