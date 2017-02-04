@@ -105,6 +105,9 @@ class GithubSource(BaseSource):
 
         approvals = []
         for review in reviews:
+            if review.get('state') == 'DISMISSED':
+                continue
+
             approval = {
                 'by': {
                     'username': review.get('user').get('login'),
@@ -114,7 +117,7 @@ class GithubSource(BaseSource):
             }
 
             # Determine type
-            if review.get('state') == 'COMMENT':
+            if review.get('state') == 'COMMENTED':
                 approval['type'] = 'comment'
                 approval['description'] = 'comment'
                 approval['value'] = '0'
@@ -130,12 +133,12 @@ class GithubSource(BaseSource):
                 user_can_write = True
 
             # Determine value
-            if review.get('state') == 'APPROVE':
+            if review.get('state') == 'APPROVED':
                 if user_can_write:
                     approval['value'] = '2'
                 else:
                     approval['value'] = '1'
-            elif review.get('state') == 'REQUEST_CHANGES':
+            elif review.get('state') == 'CHANGES_REQUESTED':
                 if user_can_write:
                     approval['value'] = '-2'
                 else:
