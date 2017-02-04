@@ -456,7 +456,7 @@ class GithubConnection(BaseConnection):
 
     def getPullBySha(self, sha):
         query = '%s type:pr is:open' % sha
-        pulls = set()
+        pulls = []
         for issue in self.github.search_issues(query=query):
             pr_url = issue.pull_request.get('url')
             if not pr_url:
@@ -466,7 +466,9 @@ class GithubConnection(BaseConnection):
             pr = self.github.pull_request(owner, project, number)
             if pr.head.sha != sha:
                 continue
-            pulls.add(pr.as_dict())
+            if pr.as_dict() in pulls:
+                continue
+            pulls.append(pr.as_dict())
 
         if len(pulls) > 1:
             raise Exception('Multiple pulls found with head sha %s' % sha)
