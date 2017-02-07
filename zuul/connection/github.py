@@ -559,7 +559,7 @@ class GithubConnection(BaseConnection):
 
     def labelPull(self, owner, project, pr_number, label):
         pull_request = self.github.issue(owner, project, pr_number)
-        pull_request.add_label(label)
+        pull_request.add_labels(label)
         log_rate_limit(self.log, self.github)
 
     def unlabelPull(self, owner, project, pr_number, label):
