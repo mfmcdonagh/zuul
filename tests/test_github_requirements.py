@@ -16,6 +16,11 @@
 
 import logging
 
+from zuul.source.github import (
+    REVIEW_APPROVED,
+    REVIEW_CHANGES_REQUESTED,
+)
+
 from tests.base import ZuulTestCase
 
 logging.basicConfig(level=logging.DEBUG,
@@ -115,7 +120,7 @@ class TestGithubRequirements(ZuulTestCase):
         self.assertEqual(len(self.history), 0)
 
         # Add an approval (review) from derp
-        A.addReview('derp', 'APPROVE')
+        A.addReview('derp', REVIEW_APPROVED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
@@ -148,19 +153,19 @@ class TestGithubRequirements(ZuulTestCase):
         self.assertEqual(len(self.history), 0)
 
         # A -2 from derp should not cause it to be enqueued
-        A.addReview('derp', 'REQUEST_CHANGES')
+        A.addReview('derp', REVIEW_CHANGES_REQUESTED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 0)
 
         # A +1 from nobody should not cause it to be enqueued
-        A.addReview('nobody', 'APPROVE')
+        A.addReview('nobody', REVIEW_APPROVED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 0)
 
         # A +2 from derp should cause it to be enqueued
-        A.addReview('derp', 'APPROVE')
+        A.addReview('derp', REVIEW_APPROVED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
@@ -194,25 +199,25 @@ class TestGithubRequirements(ZuulTestCase):
         self.assertEqual(len(self.history), 0)
 
         # A -2 from derp should not cause it to be enqueued
-        A.addReview('derp', 'REQUEST_CHANGES')
+        A.addReview('derp', REVIEW_CHANGES_REQUESTED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 0)
 
         # A +1 from nobody should not cause it to be enqueued
-        A.addReview('nobody', 'APPROVE')
+        A.addReview('nobody', REVIEW_APPROVED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 0)
 
         # A +2 from herp should not cause it to be enqueued
-        A.addReview('herp', 'APPROVE')
+        A.addReview('herp', REVIEW_APPROVED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 0)
 
         # A +2 from derp should cause it to be enqueued
-        A.addReview('derp', 'APPROVE')
+        A.addReview('derp', REVIEW_APPROVED)
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)

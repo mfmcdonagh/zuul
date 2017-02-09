@@ -19,6 +19,18 @@ from zuul.model import PullRequest, Ref
 from zuul.source import BaseSource
 
 
+# The reviews API is a developer preview.  These are the review states
+# we currently react to. See: https://developer.github.com/v3/pulls/reviews/
+REVIEW_APPROVED = 'APPROVED'
+REVIEW_CHANGES_REQUESTED = 'CHANGES_REQUESTED'
+REVIEW_COMMENTED = 'COMMENTED'
+REVIEW_STATES = [
+    REVIEW_APPROVED,
+    REVIEW_CHANGES_REQUESTED,
+    REVIEW_COMMENTED,
+]
+
+
 class GithubSource(BaseSource):
     name = 'github'
     log = logging.getLogger("zuul.GithubSource")
@@ -105,7 +117,7 @@ class GithubSource(BaseSource):
 
         approvals = []
         for review in reviews:
-            if review.get('state') == 'DISMISSED':
+            if review.get('state') not in REVIEW_STATES:
                 continue
 
             approval = {
@@ -117,7 +129,7 @@ class GithubSource(BaseSource):
             }
 
             # Determine type
-            if review.get('state') == 'COMMENTED':
+            if review.get('state') == REVIEW_COMMENTED:
                 approval['type'] = 'comment'
                 approval['description'] = 'comment'
                 approval['value'] = '0'
@@ -133,12 +145,12 @@ class GithubSource(BaseSource):
                 user_can_write = True
 
             # Determine value
-            if review.get('state') == 'APPROVED':
+            if review.get('state') == REVIEW_APPROVED:
                 if user_can_write:
                     approval['value'] = '2'
                 else:
                     approval['value'] = '1'
-            elif review.get('state') == 'CHANGES_REQUESTED':
+            elif review.get('state') == REVIEW_CHANGES_REQUESTED:
                 if user_can_write:
                     approval['value'] = '-2'
                 else:
