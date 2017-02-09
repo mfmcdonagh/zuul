@@ -15,6 +15,7 @@
 # under the License.
 
 import logging
+import time
 
 from zuul.source.github import (
     REVIEW_APPROVED,
@@ -95,23 +96,13 @@ class TestGithubRequirements(ZuulTestCase):
 
     def test_pipeline_require_approval_username(self):
         "Test pipeline requirement: approval username"
-        return self._test_require_approval_username('org/project1',
-                                                    'project1-pipeline')
-
-
-#    def test_trigger_require_approval_username(self):
-#        "Test pipeline requirement: approval username"
-#        return self._test_require_approval_username('org/project2',
-#                                                    'project2-trigger')
-
-    def _test_require_approval_username(self, project, job):
         self.config.set(
             'zuul', 'layout_config',
             'tests/fixtures/layout-github-requirement-username.yaml')
         self.sched.reconfigure(self.config)
         self.registerJobs()
 
-        A = self.fake_github.openFakePullRequest(project, 'master', 'A')
+        A = self.fake_github.openFakePullRequest('org/project1', 'master', 'A')
         # A comment event that we will keep submitting to trigger
         comment = A.getCommentAddedEvent('test me')
         self.fake_github.emitEvent(comment)
@@ -124,25 +115,16 @@ class TestGithubRequirements(ZuulTestCase):
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
-        self.assertEqual(self.history[0].name, job)
+        self.assertEqual(self.history[0].name, 'project1-pipeline')
 
     def test_pipeline_require_approval_state(self):
         "Test pipeline requirement: approval state"
-        return self._test_require_approval_state('org/project1',
-                                                 'project1-pipeline')
-
-#    def test_trigger_require_approval_state(self):
-#        "Test pipeline requirement: approval state"
-#        return self._test_require_approval_state('org/project2',
-#                                                 'project2-trigger')
-
-    def _test_require_approval_state(self, project, job):
         self.config.set('zuul', 'layout_config',
                         'tests/fixtures/layout-github-requirement-state.yaml')
         self.sched.reconfigure(self.config)
         self.registerJobs()
 
-        A = self.fake_github.openFakePullRequest(project, 'master', 'A')
+        A = self.fake_github.openFakePullRequest('org/project1', 'master', 'A')
         # Add derp to writers
         A.writers.append('derp')
         # A comment event that we will keep submitting to trigger
@@ -169,26 +151,18 @@ class TestGithubRequirements(ZuulTestCase):
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
-        self.assertEqual(self.history[0].name, job)
+        self.assertEqual(self.history[0].name, 'project1-pipeline')
 
     def test_pipeline_require_approval_user_state(self):
         "Test pipeline requirement: approval state from user"
-        return self._test_require_approval_user_state('org/project1',
-                                                      'project1-pipeline')
-
-#    def test_trigger_require_approval_user_state(self):
-#        "Test pipeline requirement: approval state from user"
-#        return self._test_require_approval_user_state('org/project2',
-#                                                      'project2-trigger')
-
-    def _test_require_approval_user_state(self, project, job):
         self.config.set(
             'zuul', 'layout_config',
             'tests/fixtures/layout-github-requirement-username-state.yaml')
         self.sched.reconfigure(self.config)
         self.registerJobs()
 
-        A = self.fake_github.openFakePullRequest(project, 'master', 'A')
+        A = self.fake_github.openFakePullRequest(
+            'org/project1', 'master', 'A')
         # Add derp and herp to writers
         A.writers.extend(('derp', 'herp'))
         # A comment event that we will keep submitting to trigger
@@ -221,6 +195,77 @@ class TestGithubRequirements(ZuulTestCase):
         self.fake_github.emitEvent(comment)
         self.waitUntilSettled()
         self.assertEqual(len(self.history), 1)
-        self.assertEqual(self.history[0].name, job)
+        self.assertEqual(self.history[0].name, 'project1-pipeline')
 
 # TODO: Implement reject on approval username/state
+
+    def test_pipeline_require_approval_latest_user_state(self):
+        "Test pipeline requirement: approval state from user"
+        self.config.set(
+            'zuul', 'layout_config',
+            'tests/fixtures/layout-github-requirement-username-state.yaml')
+        self.sched.reconfigure(self.config)
+        self.registerJobs()
+
+        A = self.fake_github.openFakePullRequest(
+            'org/project1', 'master', 'A')
+        # Add derp and herp to writers
+        A.writers.extend(('derp', 'herp'))
+        # A comment event that we will keep submitting to trigger
+        comment = A.getCommentAddedEvent('test me')
+        self.fake_github.emitEvent(comment)
+        self.waitUntilSettled()
+        # No positive approval from derp so should not be enqueued
+        self.assertEqual(len(self.history), 0)
+
+        # The first -2s from derp should not cause it to be enqueued
+        for i in range(1, 4):
+            submitted_at = time.time() - 72 * 60 * 60
+            A.addReview('derp', REVIEW_CHANGES_REQUESTED,
+                        submitted_at)
+            self.fake_github.emitEvent(comment)
+            self.waitUntilSettled()
+            self.assertEqual(len(self.history), 0)
+
+        # A +2 from derp should cause it to be enqueued
+        A.addReview('derp', REVIEW_APPROVED)
+        self.fake_github.emitEvent(comment)
+        self.waitUntilSettled()
+        self.assertEqual(len(self.history), 1)
+        self.assertEqual(self.history[0].name, 'project1-pipeline')
+
+# TODO: Implement reject on approval username/state
+
+    def test_require_approval_newer_than(self):
+        self.config.set('zuul', 'layout_config',
+                        'tests/fixtures/layout-github-requirement'
+                        '-newer-than.yaml')
+        self.sched.reconfigure(self.config)
+        self.registerJobs()
+
+        A = self.fake_github.openFakePullRequest(
+            'org/project1', 'master', 'A')
+        # Add derp and herp to writers
+        A.writers.extend(('derp', 'herp'))
+        # A comment event that we will keep submitting to trigger
+        comment = A.getCommentAddedEvent('test me')
+        self.fake_github.emitEvent(comment)
+        self.waitUntilSettled()
+        # No positive approval from derp so should not be enqueued
+        self.assertEqual(len(self.history), 0)
+
+        # Add a too-old +2, should not be enqueued
+        submitted_at = time.time() - 72 * 60 * 60
+        A.addReview('derp', REVIEW_APPROVED,
+                    submitted_at)
+        self.fake_github.emitEvent(comment)
+        self.waitUntilSettled()
+        self.assertEqual(len(self.history), 0)
+
+        # Add a recent +2
+        submitted_at = time.time() - 12 * 60 * 60
+        A.addReview('derp', REVIEW_APPROVED, submitted_at)
+        self.fake_github.emitEvent(comment)
+        self.waitUntilSettled()
+        self.assertEqual(len(self.history), 1)
+        self.assertEqual(self.history[0].name, 'project1-pipeline')

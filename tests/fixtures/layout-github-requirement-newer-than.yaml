@@ -1,0 +1,37 @@
+pipelines:
+  - name: newer_than
+    manager: IndependentPipelineManager
+    source: github
+    require:
+      approval:
+        - review: 2
+          newer-than: 1d
+    trigger:
+      github:
+        - event: pr-comment
+          comment: 'test me'
+    success:
+      github:
+        comment: true
+  - name: older_than
+    manager: IndependentPipelineManager
+    source: github
+    require:
+      approval:
+        - review: 2
+          older-than: 1d
+    trigger:
+      github:
+        - event: pr-comment
+          comment: 'test me'
+    success:
+      github:
+        comment: true
+
+projects:
+  - name: org/project1
+    newer_than:
+      - project1-pipeline
+  - name: org/project2
+    older_than:
+      - project2-pipeline

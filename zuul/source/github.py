@@ -115,19 +115,22 @@ class GithubSource(BaseSource):
         # Users with write access get a value of 2/-2 whereas users without
         # write access get a value of 1/-1.
 
-        approvals = []
+        approvals = {}
         for review in reviews:
             if review.get('state') not in REVIEW_STATES:
                 continue
 
+            user = review.get('user').get('login')
             approval = {
                 'by': {
-                    'username': review.get('user').get('login'),
+                    'username': user,
                     'email': review.get('user').get('email'),
                 },
-                'grantedOn': review.get('provided'),
+                'grantedOn': int(time.mktime(self._ghTimestampToDate(
+                                             review.get('submitted_at')))),
             }
 
+            approval['submitted'] = review.get('submitted_at')
             # Determine type
             if review.get('state') == REVIEW_COMMENTED:
                 approval['type'] = 'comment'
@@ -140,7 +143,7 @@ class GithubSource(BaseSource):
             # Get user's rights
             user_can_write = False
             permission = self.connection.getRepoPermission(
-                owner, project, review.get('user').get('login'))
+                owner, project, user)
             if permission in ['admin', 'write']:
                 user_can_write = True
 
@@ -156,9 +159,16 @@ class GithubSource(BaseSource):
                 else:
                     approval['value'] = '-1'
 
-            approvals.append(approval)
+            if user not in approvals:
+                approvals[user] = approval
+            else:
+                # if there are multiple reviews per user, keep the newest
+                # note that this breaks the ability to set the 'older-than'
+                # option on a review requirement.
+                if approval['grantedOn'] > approvals[user]['grantedOn']:
+                    approvals[user] = approval
 
-        return approvals
+        return approvals.values()
 
     def _ghTimestampToDate(self, timestamp):
         return time.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')

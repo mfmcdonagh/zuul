@@ -6,6 +6,9 @@ pipelines:
       approval:
         - username: derp
           review: 2
+    reject:
+       approval:
+         - review: -2
     trigger:
       github:
         - event: pr-comment
