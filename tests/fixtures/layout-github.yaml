@@ -74,6 +74,7 @@ pipelines:
     description: Pipeline for merging the pull request
     manager: IndependentPipelineManager
     source: github
+    merge-failure-message: 'Merge failed'
     trigger:
       github:
         - event: pr-comment

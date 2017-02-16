@@ -355,6 +355,8 @@ class TestGithub(ZuulTestCase):
         self.fake_github.emitEvent(A.getCommentAddedEvent('merge me'))
         self.waitUntilSettled()
         self.assertFalse(A.is_merged)
+        self.assertEqual(len(A.comments), 1)
+        self.assertEqual(A.comments[0], 'Merge failed')
 
     def test_parallel_changes(self):
         "Test that changes are tested in parallel and merged in series"
