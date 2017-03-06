@@ -271,7 +271,11 @@ class GithubWebhookListener():
         seen = []
         statuses = []
         for status in self.connection.getCommitStatuses(owner, project, sha):
-            user = status.get('creator').get('login')
+            # creator can be None if the user has been removed.
+            creator = status.get('creator')
+            if not creator:
+                continue
+            user = creator.get('login')
             context = status.get('context')
             state = status.get('state')
             if "%s:%s" % (user, context) not in seen:
